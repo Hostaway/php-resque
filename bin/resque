@@ -26,6 +26,7 @@ if (!class_exists('Composer\Autoload\ClassLoader', false)) {
 }
 
 $QUEUE = getenv('QUEUE');
+$QUEUE_IGNORE = getenv('QUEUE_IGNORE');
 if(empty($QUEUE)) {
     die("Set QUEUE env var containing the list of queues to work.\n");
 }
@@ -100,10 +101,10 @@ function cleanup_children($signal){
 if($count > 1) {
 	$children = array();
 	$GLOBALS['send_signal'] = FALSE;
-	
+
 	$die_signals = array(SIGTERM, SIGINT, SIGQUIT);
 	$all_signals = array_merge($die_signals, array(SIGUSR1, SIGUSR2, SIGCONT, SIGPIPE));
-	
+
 	for($i = 0; $i < $count; ++$i) {
 		$pid = Resque::fork();
 		if($pid == -1) {
@@ -112,6 +113,14 @@ if($count > 1) {
 		// Child, start the worker
 		elseif(!$pid) {
 			$queues = explode(',', $QUEUE);
+			if ($QUEUE_IGNORE) {
+				foreach (explode(',', $QUEUE_IGNORE) as $ignored) {
+					if (($key = array_search($ignored, $queues)) !== false) {
+						unset($queues[$key]);
+					}
+				}
+			}
+
 			$worker = new Resque_Worker($queues);
 			$worker->setLogger($logger);
 			$worker->hasParent = TRUE;
@@ -127,7 +136,7 @@ if($count > 1) {
 					foreach ($all_signals as $signal) {
 						pcntl_signal($signal,  "cleanup_children");
 					}
-					
+
 					$PIDFILE = getenv('PIDFILE');
 					if ($PIDFILE) {
 						if(file_put_contents($PIDFILE, getmypid()) === false){
@@ -135,19 +144,19 @@ if($count > 1) {
                                                         die(2);
                                                 }
 					}
-					
+
 					$registered = TRUE;
 				}
-				
+
 				if(function_exists('setproctitle')) {
 					setproctitle('resque-' . Resque::VERSION . ": Monitoring {$count} children: [".implode(',', array_keys($children))."]");
 				}
-				
+
 				$childPID = pcntl_waitpid(-1, $childStatus, WNOHANG);
 				if ($childPID != 0) {
 					fwrite(STDOUT, "*** A child worker died: {$childPID}\n");
 					unset($children[$childPID]);
-					$i--;					
+					$i--;
 				}
 				usleep(250000);
 				if ($GLOBALS['send_signal'] !== FALSE){
