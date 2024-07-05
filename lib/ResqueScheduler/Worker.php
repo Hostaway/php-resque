@@ -137,7 +137,7 @@ class ResqueScheduler_Worker
 	public function log($message)
 	{
 		if ($this->logLevel == self::LOG_NORMAL) {
-			fwrite(STDOUT, "*** [" . date('H:i:s Y-m-d') . "] " . $message . "\n");
+			fwrite(STDOUT, "*** " . $message . "\n");
 		} elseif ($this->logLevel == self::LOG_VERBOSE) {
 			fwrite(STDOUT, "** [" . date('H:i:s Y-m-d') . "] " . $message . "\n");
 		}
