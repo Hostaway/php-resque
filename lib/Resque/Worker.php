@@ -274,20 +274,17 @@ class Resque_Worker
 
 				if (pcntl_wifexited($status) !== true) {
 					$job->fail(new Resque_Job_DirtyExitException('Job exited abnormally'));
-					Resque_Event::trigger(Resque_Event::AFTER_JOB_FORK_FAILURE, $job);
+					Resque_Event::trigger(Resque_Event::AFTER_JOB_FORK_FAILURE, [$job]);
 				} elseif (($exitStatus = pcntl_wexitstatus($status)) !== 0) {
 					$job->fail(new Resque_Job_DirtyExitException(
 						'Job exited with exit code ' . $exitStatus
 					));
-					Resque_Event::trigger(Resque_Event::AFTER_JOB_FORK_FAILURE, $job);
+					Resque_Event::trigger(Resque_Event::AFTER_JOB_FORK_FAILURE, [$job]);
 				} else {
 					if (in_array($job->getStatus(), array(Resque_Job_Status::STATUS_WAITING, Resque_Job_Status::STATUS_RUNNING))) {
 						$job->updateStatus(Resque_Job_Status::STATUS_COMPLETE);
 						$this->logger->log(Psr\Log\LogLevel::INFO, 'done ' . $job);
-						Resque_Event::trigger(Resque_Event::AFTER_JOB_FORK_SUCCESS, [
-							'job' => $job,
-							'durationInSec' => microtime(true) - $this->startJobTime,
-						]);
+						Resque_Event::trigger(Resque_Event::AFTER_JOB_FORK_SUCCESS, [$job]);
 					}
 				}
 			}
