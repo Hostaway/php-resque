@@ -62,6 +62,8 @@ class Resque_Worker
 	 */
 	private $child = null;
 
+	private $startJobTime = null;
+
 	/**
 	 * Instantiate a new worker, given a list of queues that it should be working
 	 * on. The list of queues should be supplied in the priority that they should
@@ -267,14 +269,20 @@ class Resque_Worker
 
 				if (pcntl_wifexited($status) !== true) {
 					$job->fail(new Resque_Job_DirtyExitException('Job exited abnormally'));
+					Resque_Event::trigger(Resque_Event::AFTER_JOB_FORK_FAILURE, $job);
 				} elseif (($exitStatus = pcntl_wexitstatus($status)) !== 0) {
 					$job->fail(new Resque_Job_DirtyExitException(
 						'Job exited with exit code ' . $exitStatus
 					));
+					Resque_Event::trigger(Resque_Event::AFTER_JOB_FORK_FAILURE, $job);
 				} else {
 					if (in_array($job->getStatus(), array(Resque_Job_Status::STATUS_WAITING, Resque_Job_Status::STATUS_RUNNING))) {
 						$job->updateStatus(Resque_Job_Status::STATUS_COMPLETE);
 						$this->logger->log(Psr\Log\LogLevel::INFO, 'done ' . $job);
+						Resque_Event::trigger(Resque_Event::AFTER_JOB_FORK_SUCCESS, [
+							'job' => $job,
+							'durationInSec' => microtime(true) - $this->startJobTime,
+						]);
 					}
 				}
 			}
@@ -557,6 +565,8 @@ class Resque_Worker
 	 */
 	public function unregisterWorker()
 	{
+		Resque_Event::trigger(Resque_Event::BEFORE_WORKER_UNREGISTER);
+
 		if (is_object($this->currentJob)) {
 			$this->currentJob->fail(new Resque_Job_DirtyExitException());
 		}
@@ -585,6 +595,7 @@ class Resque_Worker
 			'payload' => $job->payload
 		));
 		Resque::redis()->set('worker:' . $job->worker, $data);
+		$this->startJobTime = microtime(true);
 	}
 
 	/**
