@@ -267,6 +267,11 @@ class Resque_Worker
 					usleep(500000);
 				}
 
+				Resque_Event::trigger(Resque_Event::AFTER_JOB_FORK, [
+					'job' => $job,
+					'durationInSec' => microtime(true) - $this->startJobTime,
+				]);
+
 				if (pcntl_wifexited($status) !== true) {
 					$job->fail(new Resque_Job_DirtyExitException('Job exited abnormally'));
 					Resque_Event::trigger(Resque_Event::AFTER_JOB_FORK_FAILURE, $job);
