@@ -9,6 +9,11 @@
  */
 class Resque_Event
 {
+	const AFTER_JOB_FORK_SUCCESS = 'afterJobForkSuccess';
+	const AFTER_JOB_FORK = 'afterJobFork';
+	const AFTER_JOB_FORK_FAILURE = 'afterJobForkFailure';
+	const BEFORE_WORKER_UNREGISTER = 'beforeWorkerUnregister';
+
 	/**
 	 * @var array Array containing all registered callbacks, indexked by event name.
 	 */
